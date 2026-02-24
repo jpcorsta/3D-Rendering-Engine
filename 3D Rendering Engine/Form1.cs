@@ -1,12 +1,27 @@
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace _3D_Rendering_Engine
 {
+
+	class Mesh
+	{
+		public List<(Vector3, Vector3, Vector3, Vector2, Vector2, Vector2)> Triangles = new List<(Vector3, Vector3, Vector3, Vector2, Vector2, Vector2)>();
+		public Vector3 location;
+		public Vector3 rotation;
+
+		public byte[] texture;
+		public int TextureWidth;
+		public int TextureHeight;
+		public int TextureStride;
+
+	}
+
 	public partial class Form1 : Form
 	{
 		float focalLength = 200f;
 
-		List<(Vector3, Vector3, Vector3)> Triangles = new List<(Vector3, Vector3, Vector3)>();
+
 
 		Vector2 ProjectPoints(Vector3 point)
 		{
@@ -20,7 +35,36 @@ namespace _3D_Rendering_Engine
 		{
 			InitializeComponent();
 			
-			Triangles.Add(new Vector3(1, 1, 1), new Vector3(1, 1, 1) new Vector3(1, 1, 1))
+			Triangles.Add((new Vector3(0, 0, 1), new Vector3(0, 1, 1), new Vector3(1, 1, 1)));
+		}
+
+		public Mesh(string ObjPath, Bitmap Texture)
+		{
+			Mesh mesh = new Mesh();
+
+			List<Vector3> vertices = new List<Vector3>();
+			List<Vector2> uvs = new List<Vector2>();
+
+			foreach (string line in File.ReadLines(ObjPath)) 
+			{
+				if(line.StartsWith("v "))
+				{
+					string[] parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+					vertices.Add(new Vector3(
+						float.Parse(parts[1]), 
+						float.Parse(parts[2]), 
+						float.Parse(parts[3])
+						));
+
+				} else if(line.StartsWith("vt "))
+				{
+					string[] parts = line.Split('',)
+				} else if(line.StartsWith("f "))
+				{
+
+				}
+			}
 		}
 
 		private void Form1_Paint(object sender, PaintEventArgs e)
@@ -38,7 +82,7 @@ namespace _3D_Rendering_Engine
 					new PointF(p3.X, p3.Y),
 				};
 
-				e.Graphics.DrawPolygon(new Pen(Color.Red), TrianglePoints);
+				e.Graphics.FillPolygon(new SolidBrush(Color.RebeccaPurple), TrianglePoints);
 			}
 		}
 	}
