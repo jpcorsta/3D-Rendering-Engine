@@ -59,10 +59,32 @@ namespace _3D_Rendering_Engine
 
 				} else if(line.StartsWith("vt "))
 				{
-					string[] parts = line.Split('',)
+					string[] parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+					uvs.Add(new Vector2(
+						float.Parse(parts[1]),
+						1 - float.Parse(parts[2])
+						));
+
 				} else if(line.StartsWith("f "))
 				{
+					string[] parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
+					if(parts.Length == 4)
+					{
+						int[] vIndex = new int[3];
+						int[] uvIndex = new int[3];
+
+						for(int i = 0; i < 3; i++)
+						{
+							string[] Indexes = parts[i + 1].Split('/');
+
+							vIndex[i] = int.Parse(Indexes[0]) - 1;
+							uvIndex[i] = int.Parse(Indexes[1]) - 1;
+						}
+
+						mesh.Triangles.Add((vIndex[0].))
+					}
 				}
 			}
 		}
