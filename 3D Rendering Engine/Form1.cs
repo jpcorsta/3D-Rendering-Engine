@@ -1,5 +1,7 @@
+using System.Drawing.Imaging;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace _3D_Rendering_Engine
 {
@@ -42,6 +44,21 @@ namespace _3D_Rendering_Engine
 		{
 			Mesh mesh = new Mesh();
 
+			BitmapData textureData = Texture.LockBits(new Rectangle(0, 0, Texture.Width, Texture.Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+
+			mesh.Texture = new Byte[textureData.Stride * Texture.Height];
+
+			Marshal.Copy(textureData.Scan0, mesh.texture, 0, mesh.texture.Length);
+
+			mesh.TextureStride = textureData.Stride;
+
+			Texture.UnlockBits(textureData);
+			Texture.Dispose();
+
+			mesh.TextureHeight = Texture.Height;
+			mesh.TextureWidth = Texture.Width;
+
+
 			List<Vector3> vertices = new List<Vector3>();
 			List<Vector2> uvs = new List<Vector2>();
 
@@ -81,12 +98,16 @@ namespace _3D_Rendering_Engine
 
 							vIndex[i] = int.Parse(Indexes[0]) - 1;
 							uvIndex[i] = int.Parse(Indexes[1]) - 1;
+
 						}
 
-						mesh.Triangles.Add((vIndex[0].))
+						mesh.Triangles.Add((vertices[vIndex[0]], vertices[vIndex[1]], vertices[vIndex[2]], uvs[uvIndex[0]], uvs[uvIndex[1]], uvs[uvIndex[2]]));
+
 					}
 				}
 			}
+
+			return mesh;
 		}
 
 		private void Form1_Paint(object sender, PaintEventArgs e)
