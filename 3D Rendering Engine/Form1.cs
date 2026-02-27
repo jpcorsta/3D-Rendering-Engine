@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 namespace _3D_Rendering_Engine
 {
 
-	class Mesh
+	public class Mesh
 	{
 		public List<(Vector3, Vector3, Vector3, Vector2, Vector2, Vector2)> Triangles = new List<(Vector3, Vector3, Vector3, Vector2, Vector2, Vector2)>();
 		public Vector3 location;
@@ -23,7 +23,7 @@ namespace _3D_Rendering_Engine
 	{
 		float focalLength = 200f;
 
-
+		public List<Mesh> SceneMeshes = new List<Mesh>();
 
 		Vector2 ProjectPoints(Vector3 point)
 		{
@@ -36,28 +36,27 @@ namespace _3D_Rendering_Engine
 		public Form1()
 		{
 			InitializeComponent();
+
+			SceneMeshes.Add(ExtractMeshFromOBJ("car.obj", new Bitmap("CarTexture.png")));
 			
-			Triangles.Add((new Vector3(0, 0, 1), new Vector3(0, 1, 1), new Vector3(1, 1, 1)));
 		}
 
-		public Mesh(string ObjPath, Bitmap Texture)
+		public Mesh ExtractMeshFromOBJ(string ObjPath, Bitmap Texture)
 		{
 			Mesh mesh = new Mesh();
 
 			BitmapData textureData = Texture.LockBits(new Rectangle(0, 0, Texture.Width, Texture.Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
 
-			mesh.Texture = new Byte[textureData.Stride * Texture.Height];
+			mesh.texture = new Byte[textureData.Stride * Texture.Height];
 
 			Marshal.Copy(textureData.Scan0, mesh.texture, 0, mesh.texture.Length);
 
 			mesh.TextureStride = textureData.Stride;
-
-			Texture.UnlockBits(textureData);
-			Texture.Dispose();
-
 			mesh.TextureHeight = Texture.Height;
 			mesh.TextureWidth = Texture.Width;
 
+			Texture.UnlockBits(textureData);
+			Texture.Dispose();
 
 			List<Vector3> vertices = new List<Vector3>();
 			List<Vector2> uvs = new List<Vector2>();
@@ -112,20 +111,22 @@ namespace _3D_Rendering_Engine
 
 		private void Form1_Paint(object sender, PaintEventArgs e)
 		{
-			foreach (var triangle in Triangles) 
-			{
-				Vector2 p1 = ProjectPoints(triangle.Item1);
-				Vector2 p2 = ProjectPoints(triangle.Item2);
-				Vector2 p3 = ProjectPoints(triangle.Item3);
-
-				PointF[] TrianglePoints = new PointF[3]
+			foreach(var mesh in SceneMeshes) {
+				foreach (var triangle in mesh.Triangles) 
 				{
+					Vector2 p1 = ProjectPoints(triangle.Item1);
+					Vector2 p2 = ProjectPoints(triangle.Item2);
+					Vector2 p3 = ProjectPoints(triangle.Item3);
+
+					PointF[] TrianglePoints = new PointF[3]
+					{
 					new PointF(p1.X, p1.Y),
 					new PointF(p2.X, p2.Y),
 					new PointF(p3.X, p3.Y),
-				};
+					};
 
-				e.Graphics.FillPolygon(new SolidBrush(Color.RebeccaPurple), TrianglePoints);
+					e.Graphics.FillPolygon(new SolidBrush(Color.Red), TrianglePoints);
+				}
 			}
 		}
 	}
