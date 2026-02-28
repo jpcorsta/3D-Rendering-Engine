@@ -2,6 +2,7 @@ using System.Drawing.Imaging;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.Intrinsics.X86;
 
 namespace _3D_Rendering_Engine
 {
@@ -25,6 +26,14 @@ namespace _3D_Rendering_Engine
 
 		public List<Mesh> SceneMeshes = new List<Mesh>();
 
+		public int ScreenWidth;
+		public int ScreenHeight;
+
+		public bool NearestNeigbor = true;
+
+		public Vector3 CameraLocation = new Vector3(0, 0, 0);
+		public Vector3 CameraRotation = new Vector3(0, 0, 0);
+
 		Vector2 ProjectPoints(Vector3 point)
 		{
 			int ScreenX = (int)(this.Width / 2 + (point.X / point.Z) * focalLength);
@@ -33,12 +42,35 @@ namespace _3D_Rendering_Engine
 			return new Vector2(ScreenX, ScreenY);
 		}
 
+		Vector3 ApplyTransformations(Vector3 vertex, Vector3 location, Vector3 rotation)
+		{
+			//Y axis
+			float x1 = (float)(vertex.X * Math.Cos(rotation.Y) + vertex.Z * Math.Sin(rotation.Y));
+			float z1 = (float)(-vertex.X * Math.Sin(rotation.Y) + vertex.Z * Math.Cos(rotation.Y));
+
+			//X axis
+			float y1 = (float)(vertex.Y * Math.Cos(rotation.X) - z1 * Math.Sin(rotation.X));
+			float z2 = (float)(vertex.X * Math.Sin(rotation.Y) + z1 * Math.Cos(rotation.X));
+
+			//Z axis
+			float x2 = (float)(x1 * Math.Cos(rotation.Z) - y1 * Math.Sin(rotation.X));
+			float y2 = (float)(x2 * Math.Sin(rotation.Z) - y1 * Math.Cos(rotation.X));
+
+			return new Vector3(
+				x2 + location.X,
+				y2 + location.Y,
+				z2 + location.Z
+				);
+		}
+
 		public Form1()
 		{
 			InitializeComponent();
 
 			SceneMeshes.Add(ExtractMeshFromOBJ("car.obj", new Bitmap("CarTexture.png")));
-			
+
+			ScreenWidth = this.Width;
+			ScreenHeight = this.Height;
 		}
 
 		public Mesh ExtractMeshFromOBJ(string ObjPath, Bitmap Texture)
@@ -111,12 +143,38 @@ namespace _3D_Rendering_Engine
 
 		private void Form1_Paint(object sender, PaintEventArgs e)
 		{
+			Bitmap FrameBuffer = new Bitmap(ScreenWidth, ScreenHeight);
+
+			byte[] PixelBuffer = new byte[FrameBuffer.Width * FrameBuffer.Height * 4];
+
+			float[,] DepthBuffer = new float[FrameBuffer.Width, FrameBuffer.Height];
+
+			object[,] DepthBufferLock = new object[FrameBuffer.Width, FrameBuffer.Height];
+
+			for (int x = 0; x < FrameBuffer.Width; x++) 
+			{
+				for (int y = 0; y < FrameBuffer.Height; y++) 
+				{
+					DepthBuffer[x, y] = float.PositiveInfinity;
+					DepthBufferLock[x, y] = new object();
+				}
+			}
+
 			foreach(var mesh in SceneMeshes) {
 				foreach (var triangle in mesh.Triangles) 
 				{
-					Vector2 p1 = ProjectPoints(triangle.Item1);
-					Vector2 p2 = ProjectPoints(triangle.Item2);
-					Vector2 p3 = ProjectPoints(triangle.Item3);
+
+					Vector3 v1a = ApplyTransformations(triangle.Item1, mesh.location, mesh.rotation);
+					Vector3 v2a = ApplyTransformations(triangle.Item2, mesh.location, mesh.rotation);
+					Vector3 v3a = ApplyTransformations(triangle.Item3, mesh.location, mesh.rotation);
+
+					Vector3 v1b = ApplyTransformations(v1a, -CameraLocation, -CameraRotation);
+					Vector3 v2b = ApplyTransformations(v2a, -CameraLocation, -CameraRotation);
+					Vector3 v3b = ApplyTransformations(v3a, -CameraLocation, -CameraRotation);
+
+					Vector2 p1 = ProjectPoints(v1b);
+					Vector2 p2 = ProjectPoints(v2b);
+					Vector2 p3 = ProjectPoints(v3b);
 
 					PointF[] TrianglePoints = new PointF[3]
 					{
@@ -128,6 +186,21 @@ namespace _3D_Rendering_Engine
 					e.Graphics.FillPolygon(new SolidBrush(Color.Red), TrianglePoints);
 				}
 			}
+
+			BitmapData FrameBufferData = FrameBuffer.LockBits(new Rectangle(0, 0, FrameBuffer.Width, FrameBuffer.Height), ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
+
+			Marshal.Copy(PixelBuffer, 0, FrameBufferData.Scan0, PixelBuffer.Length);
+
+			FrameBuffer.UnlockBits(FrameBufferData); 
+
+			if (NearestNeigbor)
+			{
+				e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+			}
+			
+			e.Graphics.DrawImage(FrameBuffer, new Rectangle(0, 0, this.Width, this.Height), new Rectangle(0, 0, FrameBuffer.Width, FrameBuffer.Height), GraphicsUnit.Pixel);
+
+			FrameBuffer.Dispose();
 		}
 	}
 }
