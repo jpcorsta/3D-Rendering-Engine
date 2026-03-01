@@ -63,6 +63,17 @@ namespace _3D_Rendering_Engine
 				);
 		}
 
+		Vector3 Barycentric(Vector2 p, Vector2 a, Vector2 b, Vector2 c)
+		{
+			float d = (b.Y - c.Y) * (a.X - c.X) + (c.X - b.X) * (a.Y - c.Y);
+
+			float weight1 = ((b.Y - c.Y) * (p.X - c.X) + (c.X - b.X) * (a.Y - c.Y)) / d;
+			float weight2 = ((c.Y - a.Y) * (p.X - c.X) + (a.X - c.X) * (p.Y - c.Y)) / d;
+			float weight3 = 1 - weight1 - weight2;
+
+			return new Vector3(weight1, weight2, weight3);	
+		}
+
 		public Form1()
 		{
 			InitializeComponent();
@@ -145,7 +156,7 @@ namespace _3D_Rendering_Engine
 		{
 			Bitmap FrameBuffer = new Bitmap(ScreenWidth, ScreenHeight);
 
-			byte[] PixelBuffer = new byte[FrameBuffer.Width * FrameBuffer.Height * 4];
+			byte[] PixelBuffer = new byte[FrameBuffer.Width * FrameBuffer.Height * 4];//4 for red, green, blue and alpha
 
 			float[,] DepthBuffer = new float[FrameBuffer.Width, FrameBuffer.Height];
 
@@ -155,7 +166,7 @@ namespace _3D_Rendering_Engine
 			{
 				for (int y = 0; y < FrameBuffer.Height; y++) 
 				{
-					DepthBuffer[x, y] = float.PositiveInfinity;
+					DepthBuffer[x, y] = float.PositiveInfinity;// going to set each of these values to the biggest number it can be, so that when we go to draw the pixels any empty spaces will be just treated as
 					DepthBufferLock[x, y] = new object();
 				}
 			}
@@ -201,6 +212,60 @@ namespace _3D_Rendering_Engine
 			e.Graphics.DrawImage(FrameBuffer, new Rectangle(0, 0, this.Width, this.Height), new Rectangle(0, 0, FrameBuffer.Width, FrameBuffer.Height), GraphicsUnit.Pixel);
 
 			FrameBuffer.Dispose();
+		}
+
+		void DrawTextureTriangle(Graphics g, Vector2 p0, Vector2 p1, Vector2 p2, Vector2 uv0, Vector2 uv1, Vector2 uv2, float z0, float z1, float z2, float[,] zBuffer, object[,] zBufferLock, byte[] texture, int textureWidth, int TextureHeight, int TextureStride, byte[] pixelBuffer)
+		{
+			int MinX = (int)(Math.Floor(Math.Min(p0.X, Math.Min(p1.X, p2.X))));
+			int MaxX = (int)(Math.Ceiling(Math.Max(p0.X, Math.Max(p1.X, p2.X))));
+			int MinY = (int)(Math.Floor(Math.Min(p0.Y, Math.Min(p1.Y, p2.Y))));
+			int MaxY = (int)(Math.Ceiling(Math.Max(p0.Y, Math.Max(p1.Y, p2.Y))));
+
+			for (int y = MinY; y <= MaxY; y++) 
+			{
+				if (y >= 0 && y < ScreenHeight) 
+				{
+					for (int x = MinX; x <= MaxX; x++)
+					{
+						if (x >= 0 && x < ScreenWidth)
+						{
+							Vector2 p = new Vector2(x + 0.5f, y + 0.5f);
+
+							Vector3 Bary = Barycentric(p, p0, p1, p2);
+
+							if (Bary.X >= 0 && Bary.Y >= 0 && Bary.Z >= 0) 
+							{
+
+								float iz0 = 1 / z0;
+								float iz1 = 1 / z1;
+								float iz2 = 1 / z2;
+
+								float InterpolatedInvZ = Bary.X * iz0 + Bary.Y * iz1 + Bary.Z * iz2;
+								float InterpolatedZ = 1 / InterpolatedInvZ;
+
+								lock (zBufferLock[x, y])
+								{
+									if(InterpolatedZ < zBuffer[x, y])
+									{
+										float u0z = uv0.X * iz0;
+										float u1z = uv1.X * iz1;
+										float u2z = uv2.X * iz2;
+
+										float v0z = uv0.Y * iz0;
+										float v1z = uv1.Y * iz1;
+										float v2z = uv2.Y * iz2;
+
+										float InterpolatedUZ = Bary.X * u0z + Bary.Y * u1z + Bary.Z * u2z;
+										float InterpolatedVZ = Bary.X * v0z + Bary.Y * v1z + Bary.Z * v2z;
+
+										float
+									}
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 }
