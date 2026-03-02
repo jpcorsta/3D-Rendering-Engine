@@ -67,11 +67,21 @@ namespace _3D_Rendering_Engine
 		{
 			float d = (b.Y - c.Y) * (a.X - c.X) + (c.X - b.X) * (a.Y - c.Y);
 
-			float weight1 = ((b.Y - c.Y) * (p.X - c.X) + (c.X - b.X) * (a.Y - c.Y)) / d;
+			float weight1 = ((b.Y - c.Y) * (p.X - c.X) + (c.X - b.X) * (p.Y - c.Y)) / d;
 			float weight2 = ((c.Y - a.Y) * (p.X - c.X) + (a.X - c.X) * (p.Y - c.Y)) / d;
 			float weight3 = 1 - weight1 - weight2;
 
 			return new Vector3(weight1, weight2, weight3);	
+		}
+
+		(Vector3, Vector2) IntersectPlane(Vector3 InsideVertex, Vector3 OutsideVertex, Vector2 InsideUV, Vector2 OutsideUV, float nearplane)
+		{
+			float t = (nearplane - InsideVertex.Z) / (OutsideVertex.Z - InsideVertex.Z);
+
+			Vector3 Position = InsideVertex + (OutsideVertex - InsideVertex) * t;
+			Vector2 UV = InsideUV + (OutsideUV - InsideUV) * t;
+
+			return(Position, UV);
 		}
 
 		public Form1()
@@ -187,14 +197,9 @@ namespace _3D_Rendering_Engine
 					Vector2 p2 = ProjectPoints(v2b);
 					Vector2 p3 = ProjectPoints(v3b);
 
-					PointF[] TrianglePoints = new PointF[3]
-					{
-					new PointF(p1.X, p1.Y),
-					new PointF(p2.X, p2.Y),
-					new PointF(p3.X, p3.Y),
-					};
+					if(p1.X <= 0 && p2.X <= 0 && p3.X <= 0 || p1.X >= ScreenWidth && p2.X >= ScreenWidth || p1.X <= 0 && p2.X <= 0 && p3.X <= 0 || p1.X >= ScreenWidth && p2.X >= ScreenWidth ||)
 
-					e.Graphics.FillPolygon(new SolidBrush(Color.Red), TrianglePoints);
+					DrawTextureTriangle(e.Graphics, p1, p2, p3, triangle.Item4, triangle.Item5, triangle.Item6, v1b.Z, v2b.Z, v3b.Z, DepthBuffer, DepthBufferLock, mesh.texture, mesh.TextureWidth, mesh.TextureHeight, mesh.TextureStride, PixelBuffer);
 				}
 			}
 
@@ -258,7 +263,30 @@ namespace _3D_Rendering_Engine
 										float InterpolatedUZ = Bary.X * u0z + Bary.Y * u1z + Bary.Z * u2z;
 										float InterpolatedVZ = Bary.X * v0z + Bary.Y * v1z + Bary.Z * v2z;
 
-										float
+										float u = InterpolatedUZ / InterpolatedInvZ;
+										float v = InterpolatedVZ / InterpolatedInvZ;
+
+										int TexX = Math.Clamp((int)(u * textureWidth), 0, textureWidth - 1);
+										int TexY = Math.Clamp((int)(v * TextureHeight), 0, TextureHeight - 1);
+
+										Color BaseColor = Color.FromArgb(
+											texture[(TexY * TextureStride + TexX * 4) + 3],
+											texture[(TexY * TextureStride + TexX * 4) + 2],
+											texture[(TexY * TextureStride + TexX * 4) + 1],
+											texture[(TexY * TextureStride + TexX * 4) + 0]
+										);
+
+										if(BaseColor.A != 0)
+										{
+											int index = (y * ScreenWidth + x) * 4;
+											pixelBuffer[index + 3] = BaseColor.A;
+											pixelBuffer[index + 2] = BaseColor.R;
+											pixelBuffer[index + 1] = BaseColor.G;
+											pixelBuffer[index + 0] = BaseColor.B;
+
+											zBuffer[x, y] = InterpolatedZ; 
+										}
+
 									}
 								}
 							}
