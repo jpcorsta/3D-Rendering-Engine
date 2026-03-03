@@ -9,7 +9,7 @@ namespace _3D_Rendering_Engine
 
 	public class Mesh
 	{
-		public List<(Vector3, Vector3, Vector3, Vector2, Vector2, Vector2)> Triangles = new List<(Vector3, Vector3, Vector3, Vector2, Vector2, Vector2)>();
+		public List<(Vector3, Vector3, Vector3, Vector2, Vector2, Vector2, bool)> Triangles = new List<(Vector3, Vector3, Vector3, Vector2, Vector2, Vector2, bool)>();
 		public Vector3 location;
 		public Vector3 rotation;
 
@@ -28,6 +28,8 @@ namespace _3D_Rendering_Engine
 
 		public int ScreenWidth;
 		public int ScreenHeight;
+
+		public float Nearplane = 0.5f;
 
 		public bool NearestNeigbor = true;
 
@@ -153,7 +155,7 @@ namespace _3D_Rendering_Engine
 
 						}
 
-						mesh.Triangles.Add((vertices[vIndex[0]], vertices[vIndex[1]], vertices[vIndex[2]], uvs[uvIndex[0]], uvs[uvIndex[1]], uvs[uvIndex[2]]));
+						mesh.Triangles.Add((vertices[vIndex[0]], vertices[vIndex[1]], vertices[vIndex[2]], uvs[uvIndex[0]], uvs[uvIndex[1]], uvs[uvIndex[2]], false));
 
 					}
 				}
@@ -185,19 +187,64 @@ namespace _3D_Rendering_Engine
 				foreach (var triangle in mesh.Triangles) 
 				{
 
-					Vector3 v1a = ApplyTransformations(triangle.Item1, mesh.location, mesh.rotation);
-					Vector3 v2a = ApplyTransformations(triangle.Item2, mesh.location, mesh.rotation);
-					Vector3 v3a = ApplyTransformations(triangle.Item3, mesh.location, mesh.rotation);
-
-					Vector3 v1b = ApplyTransformations(v1a, -CameraLocation, -CameraRotation);
-					Vector3 v2b = ApplyTransformations(v2a, -CameraLocation, -CameraRotation);
-					Vector3 v3b = ApplyTransformations(v3a, -CameraLocation, -CameraRotation);
+					Vector3 v1b = triangle.Item1;
+					Vector3 v2b = triangle.Item2;
+					Vector3 v3b = triangle.Item3;
 
 					Vector2 p1 = ProjectPoints(v1b);
 					Vector2 p2 = ProjectPoints(v2b);
 					Vector2 p3 = ProjectPoints(v3b);
 
-					if(p1.X <= 0 && p2.X <= 0 && p3.X <= 0 || p1.X >= ScreenWidth && p2.X >= ScreenWidth || p1.X <= 0 && p2.X <= 0 && p3.X <= 0 || p1.X >= ScreenWidth && p2.X >= ScreenWidth ||)
+
+					if (!triangle.Item7) 
+					{
+						Vector3 v1a = ApplyTransformations(triangle.Item1, mesh.location, mesh.rotation);
+						Vector3 v2a = ApplyTransformations(triangle.Item2, mesh.location, mesh.rotation);
+						Vector3 v3a = ApplyTransformations(triangle.Item3, mesh.location, mesh.rotation);
+
+						v1b = ApplyTransformations(v1a, -CameraLocation, -CameraRotation);
+						v2b = ApplyTransformations(v2a, -CameraLocation, -CameraRotation);
+						v3b = ApplyTransformations(v3a, -CameraLocation, -CameraRotation);
+
+						p1 = ProjectPoints(v1b);
+						p2 = ProjectPoints(v2b);
+						p3 = ProjectPoints(v3b);
+					}
+
+					if (p1.X <= 0 && p2.X <= 0 && p3.X <= 0 || p1.X >= ScreenWidth && p2.X >= ScreenWidth && p3.X >= ScreenWidth || p1.Y <= 0 && p2.Y <= 0 && p3.Y <= 0 || p1.Y >= ScreenHeight && p2.Y >= ScreenHeight && p3.Y >= ScreenHeight) { continue; }
+
+					int VerticesBehindNearplane = 0;
+					if(v1b.Z < Nearplane) { VerticesBehindNearplane++; }
+					if(v2b.Z < Nearplane) { VerticesBehindNearplane++; }
+					if(v3b.Z < Nearplane) { VerticesBehindNearplane++; }
+
+					if(VerticesBehindNearplane == 3) { continue; }
+
+					if(VerticesBehindNearplane == 2 || VerticesBehindNearplane == 1)
+					{
+						List<(Vector3, Vector2)> vertices = new List<(Vector3, Vector2)>() { (v1b, triangle.Item4), (v2b, triangle.Item5), (v3b, triangle.Item6) };           
+						
+						List<(Vector3 vertices, Vector2 uv)> InsideVertices = vertices.Where(v => v.Item1.Z >= Nearplane).ToList();
+						List<(Vector3 vertices, Vector2 uv)> OutsideVertices = vertices.Where(v => v.Item1.Z < Nearplane).ToList();
+
+						if(InsideVertices.Count == 1) 
+						{
+							(Vector3 Vertex, Vector2 uv) newVertex1 = IntersectPlane(InsideVertices[0].vertices, OutsideVertices[0].vertices, InsideVertices[0].uv, OutsideVertices[0].uv, Nearplane);
+							(Vector3 Vertex, Vector2 uv) newVertex2 = IntersectPlane(InsideVertices[0].vertices, OutsideVertices[1].vertices, InsideVertices[0].uv, OutsideVertices[1].uv, Nearplane);
+
+							mesh.Triangles.Add((InsideVertices[0].vertices, newVertex1.Vertex, newVertex2.Vertex, InsideVertices[0].uv, newVertex1.uv, newVertex2.uv, true));
+						}
+						if(InsideVertices.Count == 2)
+						{
+							(Vector3 Vertex, Vector2 uv) newVertex1 = IntersectPlane(InsideVertices[0].vertices, OutsideVertices[0].vertices, InsideVertices[0].uv, OutsideVertices[0].uv, Nearplane);
+							(Vector3 Vertex, Vector2 uv) newVertex2 = IntersectPlane(InsideVertices[1].vertices, OutsideVertices[0].vertices, InsideVertices[1].uv, OutsideVertices[0].uv, Nearplane);
+							
+							mesh.Triangles.Add((InsideVertices[0].vertices, InsideVertices[1].vertices, newVertex1.Vertex, InsideVertices[0].uv, InsideVertices[1].uv, newVertex1.uv, true));
+							mesh.Triangles.Add((InsideVertices[1].vertices, newVertex2.Vertex, newVertex1.Vertex, InsideVertices[1].uv, newVertex2.uv, newVertex1.uv, true));
+						}
+
+						continue
+					}
 
 					DrawTextureTriangle(e.Graphics, p1, p2, p3, triangle.Item4, triangle.Item5, triangle.Item6, v1b.Z, v2b.Z, v3b.Z, DepthBuffer, DepthBufferLock, mesh.texture, mesh.TextureWidth, mesh.TextureHeight, mesh.TextureStride, PixelBuffer);
 				}
