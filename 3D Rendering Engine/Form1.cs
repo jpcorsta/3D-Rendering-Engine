@@ -9,7 +9,7 @@ namespace _3D_Rendering_Engine
 
 	public class Mesh
 	{
-		public List<(Vector3, Vector3, Vector3, Vector2, Vector2, Vector2, bool)> Triangles = new List<(Vector3, Vector3, Vector3, Vector2, Vector2, Vector2, bool)>();
+		public List<(Vector3, Vector3, Vector3, Vector2, Vector2, Vector2, bool, Mesh)> Triangles = new List<(Vector3, Vector3, Vector3, Vector2, Vector2, Vector2, bool, Mesh)>();
 		public Vector3 location;
 		public Vector3 rotation;
 
@@ -155,7 +155,7 @@ namespace _3D_Rendering_Engine
 
 						}
 
-						mesh.Triangles.Add((vertices[vIndex[0]], vertices[vIndex[1]], vertices[vIndex[2]], uvs[uvIndex[0]], uvs[uvIndex[1]], uvs[uvIndex[2]], false));
+						mesh.Triangles.Add((vertices[vIndex[0]], vertices[vIndex[1]], vertices[vIndex[2]], uvs[uvIndex[0]], uvs[uvIndex[1]], uvs[uvIndex[2]], false, mesh));
 
 					}
 				}
@@ -183,24 +183,32 @@ namespace _3D_Rendering_Engine
 				}
 			}
 
-			foreach(var mesh in SceneMeshes) {
-				foreach (var triangle in mesh.Triangles) 
+			List<(Vector3, Vector3, Vector3, Vector2, Vector2, Vector2, bool, Mesh)> TempTriangles = new List<(Vector3, Vector3, Vector3, Vector2, Vector2, Vector2, bool, Mesh)>();
+
+			foreach (var mesh in SceneMeshes) 
+			{
+				foreach (var triangle in mesh.Triangles)
 				{
+					TempTriangles.Add(triangle);
+				}
+			}
+
+			for(int t = 0; t < TempTriangles.Count; t++) {
 
 					Vector3 v1b = triangle.Item1;
-					Vector3 v2b = triangle.Item2;
-					Vector3 v3b = triangle.Item3;
+					Vector3 v2b = TempTriangles[t].Item2;
+					Vector3 v3b = TempTriangles[t].Item3;
 
 					Vector2 p1 = ProjectPoints(v1b);
 					Vector2 p2 = ProjectPoints(v2b);
 					Vector2 p3 = ProjectPoints(v3b);
 
 
-					if (!triangle.Item7) 
+					if (!TempTriangles[t].Item7) 
 					{
-						Vector3 v1a = ApplyTransformations(triangle.Item1, mesh.location, mesh.rotation);
-						Vector3 v2a = ApplyTransformations(triangle.Item2, mesh.location, mesh.rotation);
-						Vector3 v3a = ApplyTransformations(triangle.Item3, mesh.location, mesh.rotation);
+						Vector3 v1a = ApplyTransformations(TempTriangles[t].Item1, TempTriangles[t].Item8.location, TempTriangles[t].Item8.rotation);
+						Vector3 v2a = ApplyTransformations(TempTriangles[t].Item2, TempTriangles[t].Item8.location, TempTriangles[t].Item8.rotation);
+						Vector3 v3a = ApplyTransformations(TempTriangles[t].Item3, TempTriangles[t].Item8.location, TempTriangles[t].Item8.rotation);
 
 						v1b = ApplyTransformations(v1a, -CameraLocation, -CameraRotation);
 						v2b = ApplyTransformations(v2a, -CameraLocation, -CameraRotation);
@@ -243,8 +251,10 @@ namespace _3D_Rendering_Engine
 							mesh.Triangles.Add((InsideVertices[1].vertices, newVertex2.Vertex, newVertex1.Vertex, InsideVertices[1].uv, newVertex2.uv, newVertex1.uv, true));
 						}
 
-						continue
+						continue;
 					}
+
+					if((p2.X - p1.X) * (p3.Y - p1.Y) - (p3.X - p1.X) * (p2.Y - p1.Y) < 0 && !triangle.Item7) { continue; }
 
 					DrawTextureTriangle(e.Graphics, p1, p2, p3, triangle.Item4, triangle.Item5, triangle.Item6, v1b.Z, v2b.Z, v3b.Z, DepthBuffer, DepthBufferLock, mesh.texture, mesh.TextureWidth, mesh.TextureHeight, mesh.TextureStride, PixelBuffer);
 				}
