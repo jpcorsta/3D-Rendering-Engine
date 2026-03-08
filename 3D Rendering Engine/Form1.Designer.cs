@@ -38,6 +38,8 @@
 			Name = "Form1";
 			Text = "Form1";
 			Paint += Form1_Paint;
+			MouseMove += Form1_MouseMove;
+			KeyDown += Form1_Keydown;
 			ResumeLayout(false);
 		}
 

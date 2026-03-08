@@ -35,10 +35,50 @@ namespace _3D_Rendering_Engine
 
 		public bool NearestNeigbor = true;
 
-		public Vector3 CameraLocation = new Vector3(-1.5f, 0.5f, 1.5f);
-		public Vector3 CameraRotation = new Vector3(0, 0.6f, 0);
+		public Vector3 CameraLocation = new Vector3(0, 3, 0);
+		public Vector3 CameraRotation = new Vector3(0, 3, 0);
+
+		private Point LastMouseLocation;
 
 		public bool Multicore = true;
+
+		private void Form1_Keydown(object sender, KeyEventArgs e)
+		{
+			Vector3 CameraBackwards = new Vector3(
+				-(float)Math.Sin(CameraRotation.Y) * (float)Math.Cos(CameraRotation.X),
+				 (float)Math.Sin(CameraRotation.X),
+				-(float)Math.Cos(CameraRotation.Y) * (float)Math.Cos(CameraRotation.X)
+				);
+
+			Vector3 CameraRight = new Vector3(
+				(float)Math.Cos(CameraRotation.Y),
+				0,
+				-(float)Math.Sin(CameraRotation.Y)
+				);
+
+			switch (e.KeyCode) 
+			{
+				case Keys.W:
+					CameraLocation -= CameraBackwards;
+					break;
+				case Keys.S: 
+					CameraLocation += CameraBackwards;
+					break;
+				case Keys.A:
+					CameraLocation -= CameraRight;
+					break;
+				case Keys.D:
+					CameraLocation += CameraRight;
+					break;
+			}
+
+			this.Invalidate();
+		}
+
+		private void Form1_MouseMove(object sender, MouseEventArgs e)
+		{
+
+		}
 
 		Vector2 ProjectPoints(Vector3 point)
 		{
@@ -60,7 +100,7 @@ namespace _3D_Rendering_Engine
 
 			//Z axis
 			float x2 = (float)(x1 * Math.Cos(rotation.Z) - y1 * Math.Sin(rotation.Z));
-			float y2 = (float)(x2 * Math.Sin(rotation.Z) + y1 * Math.Cos(rotation.Z));
+			float y2 = (float)(x * Math.Sin(rotation.Z) + y1 * Math.Cos(rotation.Z));
 
 			return new Vector3(
 				x2 + location.X,
@@ -85,7 +125,7 @@ namespace _3D_Rendering_Engine
 
 			//Z axis
 			float x2 = (float)(x1 * Math.Cos(rotation.Z) - y1 * Math.Sin (rotation.Z));
-			float y2 = (float)(x2 * Math.Sin(rotation.Z) + y1 * Math.Cos(rotation.Z));
+			float y2 = (float)(x1 * Math.Sin(rotation.Z) + y1 * Math.Cos(rotation.Z));
 
 			return new Vector3(x2, y2, z2);
 		}
@@ -246,19 +286,19 @@ namespace _3D_Rendering_Engine
 				for(int t = 0; t < TempTriangles[i].Count; t++) {
 
 					Vector3 v1b = TempTriangles[i][t].Item1;
-					Vector3 v2b = TempTriangles[t].Item2;
-					Vector3 v3b = TempTriangles[t].Item3;
+					Vector3 v2b = TempTriangles[i][t].Item2;
+					Vector3 v3b = TempTriangles[i][t].Item3;
 
 					Vector2 p1 = ProjectPoints(v1b);
 					Vector2 p2 = ProjectPoints(v2b);
 					Vector2 p3 = ProjectPoints(v3b);
 
 
-					if (!TempTriangles[t].Item7) 
+					if (!TempTriangles[i][t].Item7) 
 					{
-						Vector3 v1a = ApplyTransformations(TempTriangles[t].Item1, TempTriangles[t].Item8.location, TempTriangles[t].Item8.rotation);
-						Vector3 v2a = ApplyTransformations(TempTriangles[t].Item2, TempTriangles[t].Item8.location, TempTriangles[t].Item8.rotation);
-						Vector3 v3a = ApplyTransformations(TempTriangles[t].Item3, TempTriangles[t].Item8.location, TempTriangles[t].Item8.rotation);
+						Vector3 v1a = ApplyTransformations(TempTriangles[i][t].Item1, TempTriangles[i][t].Item8.location, TempTriangles[i][t].Item8.rotation);
+						Vector3 v2a = ApplyTransformations(TempTriangles[i][t].Item2, TempTriangles[i][t].Item8.location, TempTriangles[i][t].Item8.rotation);
+						Vector3 v3a = ApplyTransformations(TempTriangles[i][t].Item3, TempTriangles[i][t].Item8.location, TempTriangles[i][t].Item8.rotation);
 
 						v1b = ApplyCameraTransformations(v1a, -CameraLocation, -CameraRotation);
 						v2b = ApplyCameraTransformations(v2a, -CameraLocation, -CameraRotation);
@@ -280,7 +320,7 @@ namespace _3D_Rendering_Engine
 
 					if(VerticesBehindNearplane == 2 || VerticesBehindNearplane == 1)
 					{
-						List<(Vector3, Vector2)> vertices = new List<(Vector3, Vector2)>() { (v1b, TempTriangles[t].Item4), (v2b, TempTriangles[t].Item5), (v3b, TempTriangles[t].Item6) };           
+						List<(Vector3, Vector2)> vertices = new List<(Vector3, Vector2)>() { (v1b, TempTriangles[i][t].Item4), (v2b, TempTriangles[i][t].Item5), (v3b, TempTriangles[i][t].Item6) };
 						
 						List<(Vector3 vertices, Vector2 uv)> InsideVertices = vertices.Where(v => v.Item1.Z >= Nearplane).ToList();
 						List<(Vector3 vertices, Vector2 uv)> OutsideVertices = vertices.Where(v => v.Item1.Z < Nearplane).ToList();
@@ -290,22 +330,23 @@ namespace _3D_Rendering_Engine
 							(Vector3 Vertex, Vector2 uv) newVertex1 = IntersectPlane(InsideVertices[0].vertices, OutsideVertices[0].vertices, InsideVertices[0].uv, OutsideVertices[0].uv, Nearplane);
 							(Vector3 Vertex, Vector2 uv) newVertex2 = IntersectPlane(InsideVertices[0].vertices, OutsideVertices[1].vertices, InsideVertices[0].uv, OutsideVertices[1].uv, Nearplane);
 
-						TempTriangles.Add((InsideVertices[0].vertices, newVertex1.Vertex, newVertex2.Vertex, InsideVertices[0].uv, newVertex1.uv, newVertex2.uv, true, TempTriangles[t].Item8));
+							TempTriangles[i].Add((InsideVertices[0].vertices, newVertex1.Vertex, newVertex2.Vertex, InsideVertices[0].uv, newVertex1.uv, newVertex2.uv, true, TempTriangles[i][t].Item8));
 						}
 						if(InsideVertices.Count == 2)
 						{
 							(Vector3 Vertex, Vector2 uv) newVertex1 = IntersectPlane(InsideVertices[0].vertices, OutsideVertices[0].vertices, InsideVertices[0].uv, OutsideVertices[0].uv, Nearplane);
 							(Vector3 Vertex, Vector2 uv) newVertex2 = IntersectPlane(InsideVertices[1].vertices, OutsideVertices[0].vertices, InsideVertices[1].uv, OutsideVertices[0].uv, Nearplane);
-						TempTriangles[t].Item8.Triangles.Add((InsideVertices[0].vertices, InsideVertices[1].vertices, newVertex1.Vertex, InsideVertices[0].uv, InsideVertices[1].uv, newVertex1.uv, true, TempTriangles[t].Item8));
-						TempTriangles[t].Item8.Triangles.Add((InsideVertices[1].vertices, newVertex2.Vertex, newVertex1.Vertex, InsideVertices[1].uv, newVertex2.uv, newVertex1.uv, true, TempTriangles[t].Item8));
+
+							TempTriangles[i].Add((InsideVertices[0].vertices, InsideVertices[1].vertices, newVertex1.Vertex, InsideVertices[0].uv, InsideVertices[1].uv, newVertex1.uv, true, TempTriangles[i][t].Item8));
+							TempTriangles[i].Add((InsideVertices[1].vertices, newVertex2.Vertex, newVertex1.Vertex, InsideVertices[1].uv, newVertex2.uv, newVertex1.uv, true, TempTriangles[i][t].Item8));
 						}
 
 						continue;
 					}
 
-					if((p2.X - p1.X) * (p3.Y - p1.Y) - (p3.X - p1.X) * (p2.Y - p1.Y) < 0 && !TempTriangles[t].Item7) { continue; }
+					if((p2.X - p1.X) * (p3.Y - p1.Y) - (p3.X - p1.X) * (p2.Y - p1.Y) < 0 && !TempTriangles[i][t].Item7) { continue; }
 
-					DrawTextureTriangle(e.Graphics, p1, p2, p3, TempTriangles[t].Item4, TempTriangles[t].Item5, TempTriangles[t].Item6, v1b.Z, v2b.Z, v3b.Z, DepthBuffer, DepthBufferLock, TempTriangles[t].Item8.texture, TempTriangles[t].Item8.TextureWidth, TempTriangles[t].Item8.TextureHeight, TempTriangles[t].Item8.TextureStride, PixelBuffer);
+					DrawTextureTriangle(p1, p2, p3, TempTriangles[i][t].Item4, TempTriangles[i][t].Item5, TempTriangles[i][t].Item6, v1b.Z, v2b.Z, v3b.Z, DepthBuffer, DepthBufferLock, TempTriangles[i][t].Item8.texture, TempTriangles[i][t].Item8.TextureWidth, TempTriangles[i][t].Item8.TextureHeight, TempTriangles[i][t].Item8.TextureStride, PixelBuffer);
 				}
 			});
 
@@ -325,7 +366,7 @@ namespace _3D_Rendering_Engine
 			FrameBuffer.Dispose();
 		}
 
-		void DrawTextureTriangle(Graphics g, Vector2 p0, Vector2 p1, Vector2 p2, Vector2 uv0, Vector2 uv1, Vector2 uv2, float z0, float z1, float z2, float[,] zBuffer, object[,] zBufferLock, byte[] texture, int textureWidth, int TextureHeight, int TextureStride, byte[] pixelBuffer)
+		void DrawTextureTriangle(Vector2 p0, Vector2 p1, Vector2 p2, Vector2 uv0, Vector2 uv1, Vector2 uv2, float z0, float z1, float z2, float[,] zBuffer, object[,] zBufferLock, byte[] texture, int textureWidth, int TextureHeight, int TextureStride, byte[] pixelBuffer)
 		{
 			int MinX = (int)(Math.Floor(Math.Min(p0.X, Math.Min(p1.X, p2.X))));
 			int MaxX = (int)(Math.Ceiling(Math.Max(p0.X, Math.Max(p1.X, p2.X))));
