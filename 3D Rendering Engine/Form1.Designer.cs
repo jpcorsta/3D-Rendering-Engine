@@ -28,7 +28,14 @@
 		/// </summary>
 		private void InitializeComponent()
 		{
+			components = new System.ComponentModel.Container();
+			FrameRate = new System.Windows.Forms.Timer(components);
 			SuspendLayout();
+
+			FrameRate.Enabled = true;
+			FrameRate.Interval = 48;
+			FrameRate.Tick += FrameRate_Tick;
+
 			// 
 			// Form1
 			// 
@@ -37,6 +44,7 @@
 			ClientSize = new Size(800, 450);
 			Name = "Form1";
 			Text = "Form1";
+			DoubleBuffered = true;
 			Paint += Form1_Paint;
 			MouseMove += Form1_MouseMove;
 			KeyDown += Form1_Keydown;
@@ -44,5 +52,7 @@
 		}
 
 		#endregion
+
+		private System.Windows.Forms.Timer FrameRate;
 	}
 }

@@ -26,6 +26,8 @@ namespace _3D_Rendering_Engine
 	{
 		float focalLength = 200f;
 
+		int TargetFPS = 25;
+
 		public List<Mesh> SceneMeshes = new List<Mesh>();
 
 		public int ScreenWidth;
@@ -39,6 +41,7 @@ namespace _3D_Rendering_Engine
 		public Vector3 CameraRotation = new Vector3(0, 3, 0);
 
 		private Point LastMouseLocation;
+		private float MouseSensitivity = 0.005f;
 
 		public bool Multicore = true;
 
@@ -71,13 +74,24 @@ namespace _3D_Rendering_Engine
 					CameraLocation += CameraRight;
 					break;
 			}
-
-			this.Invalidate();
 		}
 
 		private void Form1_MouseMove(object sender, MouseEventArgs e)
 		{
+			int DeltaX = e.X - LastMouseLocation.X;
+			int DeltaY = e.Y - LastMouseLocation.Y;
 
+			LastMouseLocation = e.Location;
+
+			CameraRotation.X += DeltaY * MouseSensitivity;
+			CameraRotation.Y += DeltaX * MouseSensitivity;
+
+			CameraRotation.X = Math.Clamp(CameraRotation.X, (float)(-Math.PI / 2 + 0.01f), (float)(Math.PI / 2 - 0.01f));
+		}
+
+		private void FrameRate_Tick(object sender, EventArgs e)
+		{
+			this.Invalidate();
 		}
 
 		Vector2 ProjectPoints(Vector3 point)
@@ -100,7 +114,7 @@ namespace _3D_Rendering_Engine
 
 			//Z axis
 			float x2 = (float)(x1 * Math.Cos(rotation.Z) - y1 * Math.Sin(rotation.Z));
-			float y2 = (float)(x * Math.Sin(rotation.Z) + y1 * Math.Cos(rotation.Z));
+			float y2 = (float)(x1 * Math.Sin(rotation.Z) + y1 * Math.Cos(rotation.Z));
 
 			return new Vector3(
 				x2 + location.X,
@@ -156,6 +170,8 @@ namespace _3D_Rendering_Engine
 			InitializeComponent();
 
 			SceneMeshes.Add(ExtractMeshFromOBJ("car.obj", new Bitmap("CarTexture.png")));
+
+			FrameRate.Interval = (1000 / TargetFPS);
 
 			ScreenWidth = this.Width;
 			ScreenHeight = this.Height;
